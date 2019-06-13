@@ -6,8 +6,12 @@ namespace App\Controller;
 // ...
 use App\Entity\Product;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Serializer\Serializer;
+use Symfony\Component\Serializer\SerializerInterface;
+
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Validator\Constraints\Json;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
@@ -46,11 +50,12 @@ class ProductController extends AbstractController
 
 
     /**
-     * @Route("/product/{id}", name="product_show")
+     * @Route("/product/{id<\d+>}", name="product_show")
      * @param $id
-     * @return Response
+     * @param SerializerInterface $serializer
+     * @return string
      */
-    public function show($id)
+    public function show($id, SerializerInterface $serializer)
     {
         $product = $this->getDoctrine()
             ->getRepository(Product::class)
@@ -62,7 +67,8 @@ class ProductController extends AbstractController
             );
         }
 
-        return new Response('Check out this great product: '.$product->getPrice());
+        $json_product = $serializer->serialize($product, 'json');
+        return new Response($json_product);
 
         // or render a template
         // in the template, print things with {{ product.name }}
