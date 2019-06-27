@@ -7,44 +7,67 @@ namespace App\Controller;
 use App\Entity\Product;
 use Doctrine\ORM\EntityManagerInterface;
 
+use Psr\Container\ContainerInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\Constraints\Json;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\Form\Extension\Core\Type\TextareaType;
+use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 
 class ProductController extends AbstractController
 {
     /**
-     * @Route("/product", name="create_product")
-     * @param ValidatorInterface $validator
-     * @return Response
-     * @throws \Exception
+     * @Route("/product_new", name="product_new")
+     * @Method({"GET", "POST"})
      */
-    public function createProduct(ValidatorInterface $validator): Response
+    public function create(Request $request)
     {
-        // you can fetch the EntityManager via $this->getDoctrine()
-        // or you can add an argument to the action: createProduct(EntityManagerInterface $entityManager)
-        $entityManager = $this->getDoctrine()->getManager();
-
         $product = new Product();
-        $product->setName('Keyboard');
-        $product->setPrice(random_int(100, 300));
-        $product->setDescription('Ergonomic and stylish!');
 
-        // tell Doctrine you want to (eventually) save the Product (no queries yet)
-        $entityManager->persist($product);
+        $form = $this->createFormBuilder($product)
+        ->add('name', TextType::class, ['attr' => [
+            'class'=>'form-control'
+        ]])
+        ->add('price', TextType::class, [
+            'required' => false,
+            'attr' => [
+                'class'=>'form-control'
+            ]
+        ])
+        ->add('description', TextareaType::class, [
+            'required' => false,
+            'attr' => [
+                'class'=>'form-control'
+            ]
+        ])
+        ->add('save', SubmitType::class, [
+            'label' => 'Create',
+            'attr' => ['class' => 'btn btn-primary']
+        ])
+        ->getForm();
 
-        // actually executes the queries (i.e. the INSERT query)
-        $entityManager->flush();
+        $form->handleRequest($request);
 
-        $errors = $validator->validate($product);
-        if (count($errors) > 0) {
-            return new Response((string) $errors, 400);
+        if($form->isSubmitted() && $form->isValid()){
+            $product = $form->getData();
+
+            $entityManager = $this->getDoctrine()->getManager();
+            $entityManager->persist($product);
+            $entityManager->flush();
+
+            return $this->redirectToRoute('product_show', ['id' => $product->getId()]);
         }
 
-        return new Response('Saved new product with id '.$product->getId());
+        return $this->render('/product/create.html.twig', [
+            'form' => $form->createView()
+        ]);
     }
+
 
 
     /**
@@ -68,8 +91,18 @@ class ProductController extends AbstractController
 //        return new Response($json_product);
         return $this->json($product);
 
-        // or render a template
-        // in the template, print things with {{ product.name }}
-        // return $this->render('product/show.html.twig', ['product' => $product]);
+    }
+
+    /**
+     * @Route("/product/show_all")
+     * @return Response
+     */
+    public function showAll()
+    {
+        $products = $this->getDoctrine()
+            ->getRepository(Product::class)
+            ->findAll();
+
+        return $this->render('product/show_all.html.twig', ['products' => $products]);
     }
 }
