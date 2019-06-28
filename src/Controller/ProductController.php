@@ -60,7 +60,8 @@ class ProductController extends AbstractController
             $entityManager->persist($product);
             $entityManager->flush();
 
-            return $this->redirectToRoute('product_show', ['id' => $product->getId()]);
+            return $this->redirectToRoute('all_products');
+//            return $this->redirectToRoute('product_show', ['id' => $product->getId()]);
         }
 
         return $this->render('/product/create.html.twig', [
@@ -94,7 +95,7 @@ class ProductController extends AbstractController
     }
 
     /**
-     * @Route("/product/show_all")
+     * @Route("/product/show_all", name="all_products")
      * @return Response
      */
     public function showAll()
@@ -104,5 +105,71 @@ class ProductController extends AbstractController
             ->findAll();
 
         return $this->render('product/show_all.html.twig', ['products' => $products]);
+    }
+
+    /**
+     * @Route("/product/edit/{id}", name="product_edit")
+     * @Method({"GET", "POST"})
+     */
+    public function update(Request $request, $id)
+    {
+        $product = $this->getDoctrine()->getRepository(Product::class)->find($id);
+
+        $form = $this->createFormBuilder($product)
+            ->add('name', TextType::class, ['attr' => [
+                'class'=>'form-control'
+            ]])
+            ->add('price', TextType::class, [
+                'required' => false,
+                'attr' => [
+                    'class'=>'form-control'
+                ]
+            ])
+            ->add('description', TextareaType::class, [
+                'required' => false,
+                'attr' => [
+                    'class'=>'form-control'
+                ]
+            ])
+            ->add('save', SubmitType::class, [
+                'label' => 'Update',
+                'attr' => ['class' => 'btn btn-primary']
+            ])
+            ->getForm();
+
+        $form->handleRequest($request);
+
+        if($form->isSubmitted() && $form->isValid()){
+
+            $entityManager = $this->getDoctrine()->getManager();
+            $entityManager->flush();
+
+            return $this->redirectToRoute('all_products');
+
+//            return $this->redirectToRoute('product_show', ['id' => $product->getId()]);
+        }
+
+        return $this->render('/product/update.html.twig', [
+            'form' => $form->createView()
+        ]);
+    }
+
+    /**
+     * @Route("/product/delete/{id}")
+     * @Method({"DELETE"})
+     * @param $id
+     */
+    public function delete(Request $request, $id)
+    {
+        $product = $this->getDoctrine()
+            ->getRepository(Product::class)
+            ->find($id);
+
+        $entityManager = $this->getDoctrine()->getManager();
+        $entityManager->remove($product);
+        $entityManager->flush();
+
+        $response = new Response();
+        $response->send();
     }
 }
